@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест по ППЭ — Los-Santos News</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(0deg, #d1d1d1 0%, #ffffff 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .quiz-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            width: 650px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            margin: 20px;
+        }
+
+        .question-box {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+        }
+        .question-box.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .options {
+            text-align: left;
+            margin-top: 20px;
+        }
+
+        .options label {
+            display: block;
+            margin: 10px 0;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+        .options label:hover {
+            border-color: #4CAF50;
+            background-color: #f9fff9;
+        }
+        .options label.selected {
+            background-color: #f0f8ff;
+            border-color: #2196F3;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 12px 35px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .submit-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .submit-btn.disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .status-box {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .status-pass {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 2px solid #4CAF50;
+        }
+        .status-fail {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 2px solid #f44336;
+        }
+
+        .result-box {
+             margin-top: 20px;
+             padding-top: 20px;
+             border-top: 2px solid #eee;
+             display: none;
+         }
+         .result-box.show {
+             display: block;
+         }
+         
+         #summary-list {
+             text-align: left;
+             list-style: none;
+             padding: 0;
+             max-height: 400px;
+             overflow-y: auto;
+         }
+         .summary-item {
+             margin-bottom: 15px;
+             padding: 10px;
+             border-radius: 8px;
+             background: #fff5f5;
+             font-size: 13px;
+             border-left: 5px solid #f44336;
+         }
+
+         .emotion-block img { margin-bottom: 15px; border-radius: 10px; }
+
+         input[type="radio"] {
+             display: none;
+         }
+    </style>
+</head>
+<body>
+
+<div class="quiz-container">
+    <div id="quiz"></div>
+    
+    <div class="result-box" id="result">
+        <div id="status-notification" class="status-box"></div>
+        
+        <p>Ваш результат: <span id="score-percent" style="font-weight:bold;"></span>% (<span id="score-count"></span> из <span id="total-count"></span>)</p>
+        
+        <div class="emotion-block" id="emotion-block"></div>
+        
+        <h3 id="review-title">Ваши ошибки:</h3>
+        <ul id="summary-list"></ul>
+        
+        <button onclick="location.reload()" style="background:#2196F3; color:white;">Пройти еще раз</button>
+    </div>
+</div>
+
+<script>
+    const questions = [
+        { 
+            q: "Какое максимальное количество человек может присутствовать в эфире?", 
+            o: ["Максимум 2 ведущих и 2 гостя", "Максимум 3 ведущих и 1 гость", "Максимум 1 ведущий и 3 гостя", "Максимум 4 ведущих"], 
+            a: 0 
+        },
+        { 
+            q: "За сколько минут до начала эфира ведущий обязан объявить о нём в /ad?", 
+            o: ["За 15 минут", "За 30 минут", "За 1 час", "За 2 часа"], 
+            a: 1 
+        },
+        { 
+            q: "Чем должно начинаться начало каждого эфира?", 
+            o: ["С приветствия ведущего", "С музыкальной заставки радиоцентра", "С представления гостей", "С объявления темы эфира"], 
+            a: 1 
+        },
+        { 
+            q: "Какой минимальный интервал между эфирами?", 
+            o: ["15 минут", "30 минут", "1 час", "2 часа"], 
+            a: 1 
+        },
+        { 
+            q: "Какая минимальная сумма выигрыша при проведении викторины?", 
+            o: ["1.000$", "5.000$", "10.000$", "50.000$"], 
+            a: 2 
+        },
+        { 
+            q: "Какая максимальная сумма выигрыша при проведении викторины?", 
+            o: ["100.000$", "300.000$", "500.000$", "1.000.000$"], 
+            a: 2 
+        },
+        { 
+            q: "Сколько процентов от призового фонда имеет право взять ведущий, если сумма выигрыша менее 50.000$?", 
+            o: ["5%", "10%", "15%", "20%"], 
+            a: 1 
+        },
+        { 
+            q: "Сколько процентов от призового фонда имеет право взять ведущий, если сумма выигрыша 50.000$ - 100.000$?", 
+            o: ["5%", "10%", "15%", "20%"], 
+            a: 2 
+        },
+        { 
+            q: "Сколько процентов от призового фонда имеет право взять ведущий, если сумма выигрыша более 100.000$?", 
+            o: ["5%", "10%", "15%", "20%"], 
+            a: 3 
+        },
+        { 
+            q: "С какой должности сотрудник обязан знать правила ППЭ?", 
+            o: ["С 3-й должности", "С 4-й должности", "С 5-й должности", "С 6-й должности"], 
+            a: 2 
+        },
+        { 
+            q: "Какое максимальное время эфира?", 
+            o: ["30 минут", "1 час", "1 час 30 минут", "2 часа"], 
+            a: 2 
+        },
+        { 
+            q: "За сколько часов до начала эфира разрешено занимать эфирную волну?", 
+            o: ["За 30 минут", "За 1 час", "За 2 часа", "За 3 часа"], 
+            a: 2 
+        },
+        { 
+            q: "Разрешено ли участвовать в развлекательных эфирах сотрудникам той же фракции, которая проводит эфир?", 
+            o: ["Да, всегда", "Нет, запрещено", "Да, но только после рабочего дня", "Разрешено с разрешения руководства"], 
+            a: 2 
+        },
+        { 
+            q: "Сколько баллов максимум можно провести в развлекательных викторинах?", 
+            o: ["5 баллов", "10 баллов", "15 баллов", "20 баллов"], 
+            a: 1 
+        },
+        { 
+            q: "С какой должности разрешено проводить интервью?", 
+            o: ["С 3-й должности", "С 4-й должности", "С 5-й должности", "С 6-й должности"], 
+            a: 2 
+        },
+        { 
+            q: "Как начинаются и заканчиваются интервью?", 
+            o: ["С приветствия ведущего", "С музыкальной заставки радиоцентра", "С представления гостей", "С объявления темы"], 
+            a: 1 
+        },
+        { 
+            q: "Какой максимальный перерыв в разговоре допускается во время интервью?", 
+            o: ["30 секунд", "1 минута", "2 минуты", "5 минут"], 
+            a: 2 
+        },
+        { 
+            q: "Сколько вопросов обычно содержит блиц-опрос?", 
+            o: ["1-2 вопроса", "2-3 вопроса", "3-5 вопросов", "5-10 вопросов"], 
+            a: 1 
+        },
+        { 
+            q: "Какие темы запрещено затрагивать во время интервью?", 
+            o: ["Политика и экономика штата", "ЛГБТ, феминизм, расизм, религии", "Спорт и культура", "Технологии и наука"], 
+            a: 1 
+        },
+        { 
+            q: "Что из перечисленного ЗАПРЕЩЕНО в эфире?", 
+            o: ["Сообщать об IC митингах", "Использовать биндер", "Рекламировать YouTube-каналы", "Рекламировать предприятия"], 
+            a: 2 
+        },
+        { 
+            q: "Что из перечисленного РАЗРЕШЕНО в эфире?", 
+            o: ["Просить увольнение", "Рекламировать IC политические партии", "Использовать нецензурную лексику", "Вести разговор об OOC политике"], 
+            a: 1 
+        },
+        { 
+            q: "Разрешено ли сотруднику брать интервью у сотрудников своего радиоцентра?", 
+            o: ["Да", "Нет, запрещено", "Только с разрешения руководства", "Только если они не в эфире"], 
+            a: 1 
+        },
+        { 
+            q: "Можно ли приглашать на интервью людей с нон РП ником?", 
+            o: ["Да", "Нет, запрещено", "Только если они известные личности", "С разрешения руководства"], 
+            a: 1 
+        },
+        { 
+            q: "Что должен сделать ведущий перед тем, как задать вопрос гостю от людей?", 
+            o: ["Перефразировать вопрос", "Отфильтровать вопрос", "Записать вопрос", "Обсудить вопрос с гостем"], 
+            a: 1 
+        },
+        { 
+            q: "Разрешено ли подключать своих сотрудников во время интервью?", 
+            o: ["Да, разрешено", "Нет, запрещено", "Только с разрешения гостя", "Только если они не в эфире"], 
+            a: 0 
+        },
+        { 
+            q: "Разрешено ли обсуждать нынешнюю IC власть во время интервью?", 
+            o: ["Да, разрешено", "Нет, запрещено", "Только с разрешения руководства", "Только в информационном интервью"], 
+            a: 0 
+        },
+        { 
+            q: "Разрешено ли зачитывать вопросы от жителей штата во время интервью?", 
+            o: ["Да, но только адекватные", "Нет, запрещено", "Только если вопросы одобрил гость", "Только в конце интервью"], 
+            a: 0 
+        },
+        { 
+            q: "Разрешено ли приводить на интервью обычных игроков?", 
+            o: ["Да, разрешено", "Нет, только известных личностей", "Только с разрешения руководства", "Только если они согласны"], 
+            a: 0 
+        },
+        { 
+            q: "Разрешено ли рекламировать свою организацию или бизнес во время интервью?", 
+            o: ["Да, разрешено", "Нет, запрещено", "Только в конце интервью", "Только с разрешения гостя"], 
+            a: 0 
+        },
+        { 
+            q: "Разрешено ли задавать личные вопросы гостю во время интервью?", 
+            o: ["Да, но только на которые он готов ответить", "Нет, запрещено", "Только с разрешения руководства", "Только в портретном интервью"], 
+            a: 0 
+        },
+        { 
+            q: "Разрешено ли обсуждать IC политику во время интервью?", 
+            o: ["Да, разрешено", "Нет, запрещено", "Только в аналитическом интервью", "Только с разрешения руководства"], 
+            a: 0 
+        },
+        { 
+            q: "Что из перечисленного РАЗРЕШЕНО во время интервью?", 
+            o: ["Обсуждать OOC экономику", "Обсуждать IC политику", "Использовать нецензурную лексику", "Обсуждать ЛГБТ"], 
+            a: 1 
+        },
+        { 
+            q: "Какой примерный текст музыкальной заставки радиоцентра указан в правилах?", 
+            o: ["Los-Santos News – эфир!", "•°•°.•°•°::: Музыкальная заставка «Los-Santos News» :::°•°•.°•°•", "Los-Santos News – музыкальная заставка!", "...:::Музыкальная заставка Los-Santos News:::..."], 
+            a: 1 
+        }
+    ];
+
+    let currentQuestion = 0, score = 0, userAnswers = [], selectedIdx = null;
+
+    const quizEl = document.getElementById("quiz"),
+          resultEl = document.getElementById("result"),
+          statusNotifEl = document.getElementById("status-notification"),
+          percentEl = document.getElementById("score-percent"),
+          countEl = document.getElementById("score-count"),
+          totalEl = document.getElementById("total-count"),
+          summaryEl = document.getElementById("summary-list"),
+          emotionEl = document.getElementById("emotion-block");
+
+    function renderQuestion() {
+        quizEl.innerHTML = "";
+        const data = questions[currentQuestion];
+        const box = document.createElement("div");
+        box.className = "question-box active";
+        
+        const optionsHtml = data.o.map((opt, i) => `
+            <label data-idx="${i}">
+                <input type="radio" name="answer" value="${i}"> ${opt}
+            </label>
+        `).join("");
+
+        box.innerHTML = `
+            <h2 style="color: #2196F3;">Вопрос ${currentQuestion + 1} из ${questions.length}</h2>
+            <p style="font-size: 1.1em; font-weight: 600; color: #333; margin-bottom: 20px;">${data.q}</p>
+            <div class="options">${optionsHtml}</div>
+            <button class="submit-btn disabled" id="submit-btn" disabled>Ответить</button>
+        `;
+        quizEl.appendChild(box);
+
+        const labels = box.querySelectorAll('.options label');
+        const btn = box.querySelector("#submit-btn");
+
+        labels.forEach(label => {
+            label.onclick = () => {
+                labels.forEach(l => l.classList.remove('selected'));
+                label.classList.add('selected');
+                selectedIdx = parseInt(label.dataset.idx);
+                btn.classList.remove("disabled");
+                btn.disabled = false;
+            };
+        });
+
+        btn.onclick = () => {
+            userAnswers.push(selectedIdx);
+            if (selectedIdx === questions[currentQuestion].a) score++;
+            currentQuestion++;
+            selectedIdx = null;
+            if (currentQuestion < questions.length) renderQuestion();
+            else showResults();
+        };
+    }
+
+    function showResults() {
+        quizEl.style.display = "none";
+        resultEl.classList.add("show");
+        const percent = Math.round((score / questions.length) * 100);
+        
+        percentEl.textContent = percent;
+        countEl.textContent = score;
+        totalEl.textContent = questions.length;
+
+        let imgName = "";
+        
+        if (percent >= 80) {
+            statusNotifEl.textContent = "✅ ТЕСТ ПРОЙДЕН! Вы знаете ППЭ.";
+            statusNotifEl.className = "status-box status-pass";
+            imgName = "True.gif";
+        } else {
+            statusNotifEl.textContent = "❌ ТЕСТ НЕ ПРОЙДЕН! Повторите правила эфиров.";
+            statusNotifEl.className = "status-box status-fail";
+            imgName = "False.gif";
+        }
+
+        emotionEl.innerHTML = `<img src="img/${imgName}" alt="Результат" style="max-width:250px;">`;
+
+        let hasErrors = false;
+        questions.forEach((q, i) => {
+            const isCorrect = userAnswers[i] === q.a;
+            if (!isCorrect) {
+                hasErrors = true;
+                const li = document.createElement("li");
+                li.className = `summary-item`;
+                li.innerHTML = `
+                    <strong>Вопрос: ${q.q}</strong><br>
+                    <span style="color:#777">Ваш неверный ответ:</span> <span style="color:#c62828">${q.o[userAnswers[i]] || "Не отвечено"}</span>
+                `;
+                summaryEl.appendChild(li);
+            }
+        });
+
+        if (!hasErrors) {
+            document.getElementById("review-title").textContent = "Идеальный результат! Вы готовы к эфиру ✨";
+        }
+    }
+
+    renderQuestion();
+</script>
+
+</body>
+</html>
